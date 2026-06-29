@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Network Security Dashboard</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Inter:wght@300;400;500;600&display=swap');
+
+    :root {
+      --bg:       #0a0e1a;
+      --surface:  #111827;
+      --card:     #1a2236;
+      --border:   #1f2d45;
+      --accent:   #00d4ff;
+      --danger:   #ff4757;
+      --warning:  #ffa502;
+      --success:  #2ed573;
+      --text:     #e2e8f0;
+      --muted:    #64748b;
+      --mono:     'JetBrains Mono', monospace;
+      --sans:     'Inter', sans-serif;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      min-height: 100vh;
+      font-size: 14px;
+    }
+
+    /* ── Header ── */
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0 32px;
+      height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-family: var(--mono);
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--accent);
+      letter-spacing: 0.5px;
+    }
+
+    .logo-dot {
+      width: 8px; height: 8px;
+      background: var(--accent);
+      border-radius: 50%;
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.8); }
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    #status-badge {
+      font-family: var(--mono);
+      font-size: 11px;
+      padding: 4px 10px;
+      border-radius: 20px;
+      background: rgba(46, 213, 115, 0.12);
+      color: var(--success);
+      border: 1px solid rgba(46, 213, 115, 0.25);
+    }
+
+    #last-update {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    /* ── Layout ── */
+    main {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 28px 24px;
+    }
+
+    .page-title {
+      font-size: 11px;
+      font-family: var(--mono);
+      color: var(--muted);
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      margin-bottom: 20px;
+    }
+
+    /* ── Stat Cards ── */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+      margin-bottom: 24px;
+    }
+
+    .stat-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      position: relative;
+      overflow: hidden;
+      transition: border-color 0.2s;
+    }
+
+    .stat-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+    }
+
+    .stat-card.accent::before { background: var(--accent); }
+    .stat-card.danger::before { background: var(--danger); }
+    .stat-card.warning::before { background: var(--warning); }
+    .stat-card.success::before { background: var(--success); }
+
+    .stat-card:hover { border-color: #2a3a5c; }
+
+    .stat-label {
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      font-family: var(--mono);
+      margin-bottom: 10px;
+    }
+
+    .stat-value {
+      font-size: 32px;
+      font-family: var(--mono);
+      font-weight: 600;
+      color: var(--text);
+      line-height: 1;
+      margin-bottom: 6px;
+    }
+
+    .stat-card.danger .stat-value { color: var(--danger); }
+    .stat-card.accent .stat-value  { color: var(--accent); }
+    .stat-card.warning .stat-value { color: var(--warning); }
+    .stat-card.success .stat-value { color: var(--success); }
+
+    .stat-sub {
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    /* ── Two-column grid ── */
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    .panel {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .panel-header {
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .panel-title {
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--accent);
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+
+    .panel-count {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--muted);
+      background: var(--surface);
+      padding: 2px 8px;
+      border-radius: 10px;
+    }
+
+    /* ── Table ── */
+    .table-wrap {
+      overflow-y: auto;
+      max-height: 320px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-family: var(--mono);
+      font-size: 12px;
+    }
+
+    thead th {
+      background: var(--surface);
+      color: var(--muted);
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      padding: 10px 16px;
+      text-align: left;
+      font-weight: 400;
+      position: sticky;
+      top: 0;
+    }
+
+    tbody tr {
+      border-bottom: 1px solid rgba(31, 45, 69, 0.5);
+      transition: background 0.15s;
+    }
+
+    tbody tr:hover { background: rgba(0, 212, 255, 0.03); }
+
+    tbody td {
+      padding: 11px 16px;
+      color: var(--text);
+      vertical-align: middle;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 2px 9px;
+      border-radius: 20px;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+    }
+
+    .badge-danger {
+      background: rgba(255, 71, 87, 0.12);
+      color: var(--danger);
+      border: 1px solid rgba(255, 71, 87, 0.25);
+    }
+
+    .badge-info {
+      background: rgba(0, 212, 255, 0.10);
+      color: var(--accent);
+      border: 1px solid rgba(0, 212, 255, 0.2);
+    }
+
+    /* ── Protocol chart (pure CSS bars) ── */
+    .proto-list { padding: 16px 20px; }
+
+    .proto-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .proto-label {
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--text);
+      width: 44px;
+      flex-shrink: 0;
+    }
+
+    .proto-bar-bg {
+      flex: 1;
+      height: 6px;
+      background: var(--border);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    .proto-bar-fill {
+      height: 100%;
+      border-radius: 3px;
+      transition: width 0.8s ease;
+    }
+
+    .bar-tcp  { background: var(--accent); }
+    .bar-udp  { background: var(--warning); }
+    .bar-other { background: var(--muted); }
+
+    .proto-pct {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--muted);
+      width: 34px;
+      text-align: right;
+      flex-shrink: 0;
+    }
+
+    /* ── Top IPs ── */
+    .ip-list { padding: 12px 20px; }
+
+    .ip-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 9px 0;
+      border-bottom: 1px solid rgba(31, 45, 69, 0.5);
+    }
+
+    .ip-row:last-child { border-bottom: none; }
+
+    .ip-addr {
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--danger);
+    }
+
+    .ip-count {
+      font-family: var(--mono);
+      font-size: 11px;
+      background: rgba(255, 71, 87, 0.1);
+      color: var(--danger);
+      padding: 2px 8px;
+      border-radius: 10px;
+    }
+
+    /* ── Full-width panels ── */
+    .full-panel {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      margin-bottom: 16px;
+    }
+
+    /* ── Buttons ── */
+    .btn {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      padding: 6px 14px;
+      border-radius: 6px;
+      font-family: var(--mono);
+      font-size: 11px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .btn-primary {
+      background: rgba(0, 212, 255, 0.1);
+      border-color: rgba(0, 212, 255, 0.3);
+      color: var(--accent);
+    }
+
+    .btn-primary:hover {
+      background: rgba(0, 212, 255, 0.2);
+    }
+
+    /* ── Empty state ── */
+    .empty {
+      padding: 40px;
+      text-align: center;
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: 12px;
+    }
+
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+    @media (max-width: 900px) {
+      .stats-grid { grid-template-columns: repeat(2, 1fr); }
+      .two-col { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-dot"></div>
+    NetGuard / Dashboard
+  </div>
+  <div class="header-right">
+    <span id="status-badge">● LIVE</span>
+    <span id="last-update">loading...</span>
+    <button class="btn btn-primary" onclick="fetchAll()">↻ Refresh</button>
+  </div>
+</header>
+
+<main>
+  <div class="page-title">// Network Intrusion Detection System</div>
+
+  <!-- Stat cards -->
+  <div class="stats-grid">
+    <div class="stat-card accent">
+      <div class="stat-label">Total Packets</div>
+      <div class="stat-value" id="stat-packets">—</div>
+      <div class="stat-sub">captured & analyzed</div>
+    </div>
+    <div class="stat-card danger">
+      <div class="stat-label">Total Alerts</div>
+      <div class="stat-value" id="stat-alerts">—</div>
+      <div class="stat-sub">suspicious events</div>
+    </div>
+    <div class="stat-card warning">
+      <div class="stat-label">Suspicious IPs</div>
+      <div class="stat-value" id="stat-ips">—</div>
+      <div class="stat-sub">flagged sources</div>
+    </div>
+    <div class="stat-card success">
+      <div class="stat-label">Status</div>
+      <div class="stat-value" style="font-size:18px; padding-top:6px;">ONLINE</div>
+      <div class="stat-sub">system operational</div>
+    </div>
+  </div>
+
+  <!-- Middle row -->
+  <div class="two-col">
+    <!-- Protocol distribution -->
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">Protocol Distribution</span>
+      </div>
+      <div class="proto-list" id="proto-chart">
+        <div class="empty">loading...</div>
+      </div>
+    </div>
+
+    <!-- Top suspicious IPs -->
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">Top Suspicious IPs</span>
+        <span class="panel-count" id="ips-count">0</span>
+      </div>
+      <div class="ip-list" id="top-ips">
+        <div class="empty">no data</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Alerts table -->
+  <div class="full-panel">
+    <div class="panel-header">
+      <span class="panel-title">Alerts Log</span>
+      <span class="panel-count" id="alerts-count">0 alerts</span>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>IP Address</th>
+            <th>Alert</th>
+            <th>Severity</th>
+          </tr>
+        </thead>
+        <tbody id="alerts-tbody">
+          <tr><td colspan="4" class="empty">no alerts yet</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Packet logs table -->
+  <div class="full-panel">
+    <div class="panel-header">
+      <span class="panel-title">Packet Log</span>
+      <span class="panel-count" id="logs-count">0 packets</span>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Source IP</th>
+            <th>Destination IP</th>
+            <th>Protocol</th>
+          </tr>
+        </thead>
+        <tbody id="logs-tbody">
+          <tr><td colspan="3" class="empty">no packets captured yet</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</main>
+
+<script>
+  const API = "http://127.0.0.1:5000";
+
+  function protoName(num) {
+    if (num === 6)  return "TCP";
+    if (num === 17) return "UDP";
+    return "Other";
+  }
+
+  async function fetchStats() {
+    const res  = await fetch(`${API}/statistics`);
+    const data = await res.json();
+
+    document.getElementById("stat-packets").textContent = data.total_packets ?? 0;
+    document.getElementById("stat-alerts").textContent  = data.total_alerts ?? 0;
+    document.getElementById("stat-ips").textContent     = (data.top_suspicious_ips ?? []).length;
+
+    // Protocol bars
+    const proto  = data.protocol_distribution ?? {};
+    const total  = Object.values(proto).reduce((a, b) => a + b, 0) || 1;
+    const colors = { TCP: "bar-tcp", UDP: "bar-udp", Other: "bar-other" };
+    const chart  = document.getElementById("proto-chart");
+
+    if (total === 1 && Object.keys(proto).length === 0) {
+      chart.innerHTML = '<div class="empty">no packets yet</div>';
+    } else {
+      chart.innerHTML = Object.entries(proto).map(([name, count]) => {
+        const pct = Math.round((count / total) * 100);
+        return `<div class="proto-row">
+          <span class="proto-label">${name}</span>
+          <div class="proto-bar-bg">
+            <div class="proto-bar-fill ${colors[name] || 'bar-other'}" style="width:${pct}%"></div>
+          </div>
+          <span class="proto-pct">${pct}%</span>
+        </div>`;
+      }).join("");
+    }
+
+    // Top IPs
+    const ips     = data.top_suspicious_ips ?? [];
+    const ipsEl   = document.getElementById("top-ips");
+    document.getElementById("ips-count").textContent = ips.length;
+    ipsEl.innerHTML = ips.length === 0
+      ? '<div class="empty">no suspicious IPs</div>'
+      : ips.map(r => `<div class="ip-row">
+          <span class="ip-addr">${r.ip}</span>
+          <span class="ip-count">${r.count} alerts</span>
+        </div>`).join("");
+  }
+
+  async function fetchAlerts() {
+    const res  = await fetch(`${API}/alerts`);
+    const data = await res.json();
+    const tbody = document.getElementById("alerts-tbody");
+    document.getElementById("alerts-count").textContent = `${data.length} alerts`;
+
+    tbody.innerHTML = data.length === 0
+      ? `<tr><td colspan="4" class="empty">no alerts yet</td></tr>`
+      : data.map(a => `<tr>
+          <td style="color:var(--muted)">${a.id}</td>
+          <td><span style="color:var(--danger);font-family:var(--mono)">${a.ip}</span></td>
+          <td>${a.alert}</td>
+          <td><span class="badge badge-danger">HIGH</span></td>
+        </tr>`).join("");
+  }
+
+  async function fetchLogs() {
+    const res  = await fetch(`${API}/logs`);
+    const data = await res.json();
+    const tbody = document.getElementById("logs-tbody");
+    document.getElementById("logs-count").textContent = `${data.length} packets`;
+
+    tbody.innerHTML = data.length === 0
+      ? `<tr><td colspan="3" class="empty">no packets captured yet</td></tr>`
+      : data.reverse().map(p => `<tr>
+          <td style="font-family:var(--mono);color:var(--accent)">${p.source_ip}</td>
+          <td style="font-family:var(--mono);color:var(--text)">${p.destination_ip}</td>
+          <td><span class="badge badge-info">${protoName(p.protocol)}</span></td>
+        </tr>`).join("");
+  }
+
+  async function fetchAll() {
+    try {
+      await Promise.all([fetchStats(), fetchAlerts(), fetchLogs()]);
+      const now = new Date().toLocaleTimeString();
+      document.getElementById("last-update").textContent = `updated ${now}`;
+    } catch (e) {
+      document.getElementById("status-badge").textContent = "● OFFLINE";
+      document.getElementById("status-badge").style.color = "var(--danger)";
+      document.getElementById("last-update").textContent  = "cannot reach backend";
+    }
+  }
+
+  // Load on start, then auto-refresh every 10 seconds
+  fetchAll();
+  setInterval(fetchAll, 10000);
+</script>
+
+</body>
+</html>
